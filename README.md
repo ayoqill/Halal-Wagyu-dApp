@@ -1,7 +1,52 @@
-# Sample Hardhat 3 Beta Project (minimal)
+🥩 Halal Wagyu Supply Chain dApp
 
-This project has a minimal setup of Hardhat 3 Beta, without any plugins.
+This project is a blockchain-based decentralized application (dApp) that ensures halal authenticity, traceability, and transparency for imported Wagyu beef using Ethereum smart contracts.
 
-## What's included?
+📌 Project Overview
 
-The project includes native support for TypeScript, Hardhat scripts, tasks, and support for Solidity compilation and tests.
+The system records every stage of the Wagyu supply chain — from producer, halal authority, distributor, to retailer — on the blockchain.
+Once data is stored, it cannot be altered, ensuring trust for consumers and authorities.
+
+🛠 Tech Stack
+
+Solidity – Smart contract
+
+Hardhat – Development, testing & deployment
+
+Mocha + Chai – Unit testing
+
+Ethers.js – Blockchain interaction
+
+MetaMask – Wallet connection
+
+Ethereum (Sepolia Testnet) – Deployment network
+
+VS Code – Development environment
+
+🔐 Smart Contract Roles
+
+Admin – Assign roles
+
+Producer – Create Wagyu batches
+
+Halal Authority – Verify halal certification
+
+Distributor – Transfer ownership
+
+Retailer – Final product holder
+
+Consumer – Verify product details
+
+✅ Features
+
+Role-based access control
+
+Immutable halal certification records
+
+Full supply chain traceability
+
+Secure and transparent data storage
+
+🎯 Purpose
+
+This project demonstrates how blockchain technology can be used to solve real-world halal integrity issues in food supply chains.
