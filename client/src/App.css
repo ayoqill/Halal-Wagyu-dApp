@@ -28,9 +28,13 @@ h1, h2, h3 {
 }
 
 .app-container {
-  max-width: 1000px;
+  width: 100%;
+  min-height: 100vh;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* --- Header & Wallet --- */
@@ -105,6 +109,7 @@ header {
   border-radius: 4px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   animation: fadeIn 0.6s ease-out;
+  flex: 1;
 }
 
 @keyframes fadeIn {
