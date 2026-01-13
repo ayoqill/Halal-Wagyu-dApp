@@ -1,8 +1,9 @@
 async function main() {
   const Wagyu = await ethers.getContractFactory("WagyuSupplyChain");
   const wagyu = await Wagyu.deploy();
-  await wagyu.deployed();
-  console.log("WagyuSupplyChain deployed to:", wagyu.address);
+  await wagyu.waitForDeployment();
+  const address = await wagyu.getAddress();
+  console.log("WagyuSupplyChain deployed to:", address);
 }
 
 main().catch((error) => {
