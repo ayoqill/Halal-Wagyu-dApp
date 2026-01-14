@@ -7,7 +7,7 @@ describe("WagyuSupplyChain", function () {
 
     const Wagyu = await ethers.getContractFactory("WagyuSupplyChain");
     const wagyu = await Wagyu.deploy();
-    await wagyu.deployed();
+    await wagyu.waitForDeployment();
 
     // Admin assigns roles
     await wagyu.addProducer(producer.address);
