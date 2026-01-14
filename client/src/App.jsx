@@ -537,6 +537,14 @@ function App() {
 
   // Admin Form
   const [roleAddress, setRoleAddress] = useState("");
+  const [targetRoles, setTargetRoles] = useState({
+    producer: false,
+    halalAuthority: false,
+    distributor: false,
+    retailer: false,
+  });
+  const [isLoadingTargetRoles, setIsLoadingTargetRoles] = useState(false);
+  const [targetRolesError, setTargetRolesError] = useState("");
 
   const getReadableError = (err) => {
     if (!err) return "Unknown error";
@@ -568,6 +576,35 @@ function App() {
       });
     } finally {
       setIsLoadingRoles(false);
+    }
+  };
+
+  const refreshTargetRoles = async (_contract, _address) => {
+    if (!_contract || !_address || !ethers.isAddress(_address)) {
+      setTargetRoles({ producer: false, halalAuthority: false, distributor: false, retailer: false });
+      return;
+    }
+
+    setIsLoadingTargetRoles(true);
+    setTargetRolesError("");
+    try {
+      const [isProducer, isAuthority, isDistributor, isRetailer] = await Promise.all([
+        _contract.producer(_address),
+        _contract.halalAuthority(_address),
+        _contract.distributor(_address),
+        _contract.retailer(_address),
+      ]);
+      setTargetRoles({
+        producer: Boolean(isProducer),
+        halalAuthority: Boolean(isAuthority),
+        distributor: Boolean(isDistributor),
+        retailer: Boolean(isRetailer),
+      });
+    } catch (err) {
+      console.error(err);
+      setTargetRolesError(getReadableError(err));
+    } finally {
+      setIsLoadingTargetRoles(false);
     }
   };
 
@@ -705,6 +742,31 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-refresh role toggles for the typed address (debounced)
+  useEffect(() => {
+    if (!contract) return;
+
+    const trimmed = (roleAddress || "").trim();
+    if (!trimmed) {
+      setTargetRolesError("");
+      setTargetRoles({ producer: false, halalAuthority: false, distributor: false, retailer: false });
+      return;
+    }
+
+    if (!ethers.isAddress(trimmed)) {
+      setTargetRolesError("Enter a valid wallet address to view role toggles.");
+      setTargetRoles({ producer: false, halalAuthority: false, distributor: false, retailer: false });
+      return;
+    }
+
+    const t = setTimeout(() => {
+      refreshTargetRoles(contract, trimmed);
+    }, 350);
+
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contract, roleAddress]);
+
   // --- FUNCTIONS ---
 
   const isWrongNetwork = chainId != null && chainId !== EXPECTED_CHAIN_ID;
@@ -792,25 +854,44 @@ function App() {
     }
   };
 
-  const handleAdminGrant = async (role) => {
+  const grantRoleToAddress = async (role, address) => {
     if (!contract) return;
     if (!roles.isAdmin) return alert("Only admin can assign roles.");
-    if (!ethers.isAddress(roleAddress)) return alert("Enter a valid wallet address.");
+    if (!ethers.isAddress(address)) return alert("Enter a valid wallet address.");
     try {
       let tx;
-      if (role === 'producer') tx = await contract.addProducer(roleAddress);
-      else if (role === 'authority') tx = await contract.addHalalAuthority(roleAddress);
-      else if (role === 'distributor') tx = await contract.addDistributor(roleAddress);
-      else if (role === 'retailer') tx = await contract.addRetailer(roleAddress);
+      if (role === 'producer') tx = await contract.addProducer(address);
+      else if (role === 'authority') tx = await contract.addHalalAuthority(address);
+      else if (role === 'distributor') tx = await contract.addDistributor(address);
+      else if (role === 'retailer') tx = await contract.addRetailer(address);
       else throw new Error('Unknown role');
 
       await tx.wait();
       alert(`Role granted successfully`);
       await refreshRoles(contract, account);
+      await refreshTargetRoles(contract, address);
     } catch (err) {
       console.error(err);
       alert(getReadableError(err));
     }
+  };
+
+  const handleRoleToggle = async (roleKey) => {
+    const addr = (roleAddress || "").trim();
+    if (!ethers.isAddress(addr)) return alert("Enter a valid wallet address.");
+    if (!roles.isAdmin) return alert("Only admin can assign roles.");
+    if (isWrongNetwork) return alert(`Wrong network. Switch to ${EXPECTED_NETWORK_NAME}.`);
+
+    const isEnabled = Boolean(targetRoles?.[roleKey]);
+    if (isEnabled) {
+      return alert("This contract only supports granting roles (turning ON). Revoking (turning OFF) is not implemented.");
+    }
+
+    if (roleKey === 'producer') return grantRoleToAddress('producer', addr);
+    if (roleKey === 'halalAuthority') return grantRoleToAddress('authority', addr);
+    if (roleKey === 'distributor') return grantRoleToAddress('distributor', addr);
+    if (roleKey === 'retailer') return grantRoleToAddress('retailer', addr);
+    return alert('Unknown role');
   };
 
   return (
@@ -945,7 +1026,7 @@ function App() {
             </div>
             <div className="input-group">
               <label>Certificate Hash (IPFS)</label>
-              <input type="text" placeholder="Qm..." value={certHash} onChange={(e) => setCertHash(e.target.value)} />
+              <input type="text" placeholder="Cert-001" value={certHash} onChange={(e) => setCertHash(e.target.value)} />
             </div>
             <button
               className="action-btn"
@@ -1044,29 +1125,103 @@ function App() {
             </p>
 
             <div className="input-group">
-              <label>Wallet Address to Grant Role</label>
-              <input type="text" placeholder="0x..." value={roleAddress} onChange={(e) => setRoleAddress(e.target.value)} />
+              <label>Wallet Address</label>
+              <input
+                type="text"
+                placeholder="0x..."
+                value={roleAddress}
+                onChange={(e) => setRoleAddress(e.target.value)}
+              />
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button className="action-btn" onClick={() => handleAdminGrant('producer')} disabled={!account || chainId !== EXPECTED_CHAIN_ID || !roles.isAdmin}>
-                GRANT PRODUCER
-              </button>
-              <button className="action-btn" onClick={() => handleAdminGrant('authority')} disabled={!account || chainId !== EXPECTED_CHAIN_ID || !roles.isAdmin}>
-                GRANT AUTHORITY
-              </button>
-              <button className="action-btn" onClick={() => handleAdminGrant('distributor')} disabled={!account || chainId !== EXPECTED_CHAIN_ID || !roles.isAdmin}>
-                GRANT DISTRIBUTOR
-              </button>
-              <button className="action-btn" onClick={() => handleAdminGrant('retailer')} disabled={!account || chainId !== EXPECTED_CHAIN_ID || !roles.isAdmin}>
-                GRANT RETAILER
-              </button>
+            <div style={{ color: '#888', marginBottom: '10px' }}>
+              Role toggles for the address above (OFF → click to grant ON). ON roles cannot be turned OFF because the smart contract does not include a “remove role” function.
+            </div>
+
+            {targetRolesError ? (
+              <div style={{ marginBottom: '12px', color: '#ff6b6b' }}>{targetRolesError}</div>
+            ) : null}
+
+            <div className="toggle-list">
+              <div className="toggle-row">
+                <div>
+                  <div className="toggle-title">Producer</div>
+                  <div className="toggle-sub">{targetRoles.producer ? 'Enabled' : 'Disabled'}</div>
+                </div>
+                <label className="toggle-switch" title={targetRoles.producer ? 'Already enabled (revoking not supported)' : 'Click to grant'}>
+                  <input
+                    type="checkbox"
+                    checked={targetRoles.producer}
+                    onChange={() => handleRoleToggle('producer')}
+                    disabled={!account || chainId !== EXPECTED_CHAIN_ID || !roles.isAdmin || !ethers.isAddress((roleAddress || '').trim()) || isLoadingTargetRoles || targetRoles.producer}
+                  />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
+
+              <div className="toggle-row">
+                <div>
+                  <div className="toggle-title">Halal Authority</div>
+                  <div className="toggle-sub">{targetRoles.halalAuthority ? 'Enabled' : 'Disabled'}</div>
+                </div>
+                <label className="toggle-switch" title={targetRoles.halalAuthority ? 'Already enabled (revoking not supported)' : 'Click to grant'}>
+                  <input
+                    type="checkbox"
+                    checked={targetRoles.halalAuthority}
+                    onChange={() => handleRoleToggle('halalAuthority')}
+                    disabled={!account || chainId !== EXPECTED_CHAIN_ID || !roles.isAdmin || !ethers.isAddress((roleAddress || '').trim()) || isLoadingTargetRoles || targetRoles.halalAuthority}
+                  />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
+
+              <div className="toggle-row">
+                <div>
+                  <div className="toggle-title">Distributor</div>
+                  <div className="toggle-sub">{targetRoles.distributor ? 'Enabled' : 'Disabled'}</div>
+                </div>
+                <label className="toggle-switch" title={targetRoles.distributor ? 'Already enabled (revoking not supported)' : 'Click to grant'}>
+                  <input
+                    type="checkbox"
+                    checked={targetRoles.distributor}
+                    onChange={() => handleRoleToggle('distributor')}
+                    disabled={!account || chainId !== EXPECTED_CHAIN_ID || !roles.isAdmin || !ethers.isAddress((roleAddress || '').trim()) || isLoadingTargetRoles || targetRoles.distributor}
+                  />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
+
+              <div className="toggle-row">
+                <div>
+                  <div className="toggle-title">Retailer</div>
+                  <div className="toggle-sub">{targetRoles.retailer ? 'Enabled' : 'Disabled'}</div>
+                </div>
+                <label className="toggle-switch" title={targetRoles.retailer ? 'Already enabled (revoking not supported)' : 'Click to grant'}>
+                  <input
+                    type="checkbox"
+                    checked={targetRoles.retailer}
+                    onChange={() => handleRoleToggle('retailer')}
+                    disabled={!account || chainId !== EXPECTED_CHAIN_ID || !roles.isAdmin || !ethers.isAddress((roleAddress || '').trim()) || isLoadingTargetRoles || targetRoles.retailer}
+                  />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
             </div>
 
             <div style={{ marginTop: '20px' }}>
-              <button className="action-btn" onClick={() => refreshRoles(contract, account)} disabled={!contract || !account}>
-                REFRESH ROLES
-              </button>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  className="small-btn"
+                  onClick={() => refreshTargetRoles(contract, (roleAddress || '').trim())}
+                  disabled={!contract || !ethers.isAddress((roleAddress || '').trim()) || isLoadingTargetRoles}
+                >
+                  {isLoadingTargetRoles ? 'REFRESHING…' : 'REFRESH TARGET ROLES'}
+                </button>
+
+                <button className="small-btn" onClick={() => refreshRoles(contract, account)} disabled={!contract || !account}>
+                  REFRESH MY ROLES
+                </button>
+              </div>
             </div>
           </div>
         )}
