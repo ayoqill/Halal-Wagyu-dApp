@@ -15,6 +15,7 @@ Once data is stored, it cannot be altered, ensuring trust for consumers and auth
 
 <img width="1775" height="930" alt="image" src="https://github.com/user-attachments/assets/e917d005-235e-4c28-823a-018abac6cdb5" />
 
+---
 🛠 Tech Stack
 
 Solidity – Smart contract
@@ -31,6 +32,7 @@ Ethereum (Sepolia Testnet) – Deployment network
 
 VS Code – Development environment
 
+---
 🔐 Smart Contract Roles
 
 Admin – Assign roles
@@ -45,6 +47,7 @@ Retailer – Final product holder
 
 Consumer – Verify product details
 
+---
 ✅ Features
 
 Role-based access control
@@ -55,6 +58,7 @@ Full supply chain traceability
 
 Secure and transparent data storage
 
+---
 🎯 Purpose
 
 This project demonstrates how blockchain technology can be used to solve real-world halal integrity issues in food supply chains.
